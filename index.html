@@ -15,11 +15,9 @@
   tr:last-child td{border-bottom:none}
   tr:hover td{background:#ffffff08}
   .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:16px}
-  .btn-ghost{background:none;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer}
   .tab-btn{background:none;border:none;padding:10px 20px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#64748b;border-bottom:2px solid transparent;cursor:pointer}
   .tab-btn.active{color:#f97316;border-bottom-color:#f97316}
   .label{font-size:11px;letter-spacing:.1em;color:#64748b;text-transform:uppercase}
-  select option,select optgroup{background:#0f172a;color:#e2e8f0}
   .modal{position:fixed;inset:0;background:#000000cc;display:flex;align-items:center;justify-content:center;z-index:1000;cursor:zoom-out}
   .modal img{max-width:90vw;max-height:90vh;border-radius:12px;box-shadow:0 0 60px #000}
   .modal-close{position:absolute;top:20px;right:24px;color:#94a3b8;font-size:24px;cursor:pointer;background:none;border:none}
@@ -27,7 +25,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <div style="background:#1e293b;border-bottom:1px solid #334155;padding:0 24px">
   <div style="max-width:1200px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 0">
@@ -35,7 +32,7 @@
         <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#f97316;letter-spacing:-.02em">⬡ SPIKE FUND</div>
         <div style="font-size:11px;color:#64748b;letter-spacing:.1em;margin-top:2px">VOLLEYBALL CLUB · PARENT FUNDED TRANSPARENCY TRACKER</div>
       </div>
-      <a href="admin.html" style="font-size:11px;color:#475569;text-decoration:none;padding:6px 12px;border:1px solid #334155;border-radius:6px">Admin ↗</a>
+      <span id="sync-status" style="font-size:11px;color:#64748b">connecting…</span>
     </div>
     <div style="display:flex;gap:4px;margin-top:8px">
       <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
@@ -66,7 +63,6 @@
         <div id="stat-bal-sub" style="font-size:12px;color:#64748b;margin-top:4px">in good standing</div>
       </div>
     </div>
-
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="card">
         <div class="label" style="margin-bottom:16px">Spending by Category</div>
@@ -77,10 +73,9 @@
         <div id="chart-families"></div>
       </div>
     </div>
-
     <div class="card" style="margin-top:16px">
       <div class="label" style="margin-bottom:16px">Transaction History</div>
-      <div id="history-list"><div style="color:#475569;font-size:13px;text-align:center;padding:20px">No activity yet</div></div>
+      <div id="history-list"><div style="color:#475569;font-size:13px;text-align:center;padding:20px">Connecting to database…</div></div>
     </div>
   </div>
 
@@ -91,7 +86,7 @@
       <div style="overflow-x:auto">
         <table>
           <thead><tr><th>Date</th><th>Contributor</th><th>Transaction Type</th><th style="text-align:right">Amount</th></tr></thead>
-          <tbody id="contrib-tbody"><tr><td colspan="4" style="text-align:center;color:#475569">No contributions yet</td></tr></tbody>
+          <tbody id="contrib-tbody"><tr><td colspan="4" style="text-align:center;color:#475569">Connecting…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -104,7 +99,7 @@
       <div style="overflow-x:auto">
         <table>
           <thead><tr><th>Date</th><th>Category</th><th>Receipt</th><th style="text-align:right">Amount</th></tr></thead>
-          <tbody id="exp-tbody"><tr><td colspan="4" style="text-align:center;color:#475569">No expenses yet</td></tr></tbody>
+          <tbody id="exp-tbody"><tr><td colspan="4" style="text-align:center;color:#475569">Connecting…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -112,13 +107,25 @@
 
 </div>
 
-<!-- Receipt lightbox -->
 <div id="lightbox" class="modal" style="display:none" onclick="closeLightbox()">
   <img id="lightbox-img" src="" alt="receipt">
   <button class="modal-close" onclick="closeLightbox()">✕</button>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDOHDRFWSK_5cT7Porh39ODsBLB3uEVxj4",
+  authDomain: "spike-fund.firebaseapp.com",
+  projectId: "spike-fund",
+  storageBucket: "spike-fund.firebasestorage.app",
+  messagingSenderId: "466812224168",
+  appId: "1:466812224168:web:9164751b0ae374da44f89d"
+});
+const db = getFirestore(app);
+
 const CATEGORIES = ["Tournament Fees","Coaching/Training","Facility Rental","Other/Misc"];
 const CATEGORY_COLORS = {"Tournament Fees":"#f97316","Coaching/Training":"#3b82f6","Facility Rental":"#8b5cf6","Other/Misc":"#6b7280"};
 const NOTE_COLORS = {
@@ -131,44 +138,24 @@ const NOTE_COLORS = {
   "Club Payment – Tournament Fees":  {bg:"#3b1f6022",color:"#c084fc",border:"#3b1f60"},
 };
 
-function fmt(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
-
-function noteTag(note){
+const fmt = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
+const noteTag = note => {
   if(!note) return '<span style="color:#475569">—</span>';
-  const s=NOTE_COLORS[note]||{bg:"#1e293b",color:"#94a3b8",border:"#334155"};
+  const s = NOTE_COLORS[note]||{bg:"#1e293b",color:"#94a3b8",border:"#334155"};
   return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${s.bg};color:${s.color};border:1px solid ${s.border}">${note}</span>`;
-}
-
-function catTag(cat){
-  const c=CATEGORY_COLORS[cat]||"#6b7280";
+};
+const catTag = cat => {
+  const c = CATEGORY_COLORS[cat]||"#6b7280";
   return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${c}22;color:${c};border:1px solid ${c}44">${cat}</span>`;
-}
+};
 
-function loadData(){
-  return {
-    contributions: JSON.parse(localStorage.getItem("vb-contributions")||"[]"),
-    expenses:      JSON.parse(localStorage.getItem("vb-expenses")||"[]"),
-  };
-}
-
-let activeTab = "dashboard";
-
-function showTab(t){
-  ["dashboard","contributions","expenses"].forEach(id=>{
-    document.getElementById("tab-"+id).style.display = id===t?"block":"none";
-    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.textContent.trim().toLowerCase()===t));
-  });
-  activeTab = t;
-  render();
-}
+let contributions = [], expenses = [];
 
 function render(){
-  const {contributions, expenses} = loadData();
   const totalIn  = contributions.reduce((s,c)=>s+c.amount,0);
   const totalOut = expenses.reduce((s,e)=>s+e.amount,0);
-  const balance  = totalIn - totalOut;
+  const balance  = totalIn-totalOut;
 
-  // Stats
   document.getElementById("stat-in").textContent = fmt(totalIn);
   document.getElementById("stat-in-sub").textContent = `${contributions.length} contributions`;
   document.getElementById("stat-out").textContent = fmt(totalOut);
@@ -177,7 +164,6 @@ function render(){
   document.getElementById("stat-bal").style.color = balance>=0?"#3b82f6":"#ef4444";
   document.getElementById("stat-bal-sub").textContent = balance>=0?"in good standing":"deficit";
 
-  // Category chart
   document.getElementById("chart-categories").innerHTML = CATEGORIES.map(cat=>{
     const total = expenses.filter(e=>e.category===cat).reduce((s,e)=>s+e.amount,0);
     const pct = totalOut>0?(total/totalOut)*100:0;
@@ -187,34 +173,27 @@ function render(){
         <span style="color:#cbd5e1">${cat}</span><span style="color:${c};font-weight:500">${fmt(total)}</span>
       </div>
       <div style="height:6px;background:#0f172a;border-radius:3px">
-        <div style="height:100%;width:${pct}%;background:${c};border-radius:3px;transition:width .6s ease"></div>
-      </div>
-    </div>`;
+        <div style="height:100%;width:${pct}%;background:${c};border-radius:3px;transition:width .6s"></div>
+      </div></div>`;
   }).join("");
 
-  // Family chart
-  const byFamily = {};
-  contributions.forEach(c=>{ byFamily[c.anonymized]=(byFamily[c.anonymized]||0)+c.amount; });
-  const families = Object.entries(byFamily).sort((a,b)=>b[1]-a[1]);
+  const byFamily={};
+  contributions.forEach(c=>{byFamily[c.anonymized]=(byFamily[c.anonymized]||0)+c.amount;});
+  const families=Object.entries(byFamily).sort((a,b)=>b[1]-a[1]);
   document.getElementById("chart-families").innerHTML = families.length===0
     ? '<div style="color:#475569;font-size:13px;text-align:center;padding-top:20px">No contributions yet</div>'
     : families.map(([f,total])=>{
-        const pct = totalIn>0?(total/totalIn)*100:0;
+        const pct=totalIn>0?(total/totalIn)*100:0;
         return `<div style="margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px">
             <span style="color:#cbd5e1">${f}</span><span style="color:#22c55e;font-weight:500">${fmt(total)}</span>
           </div>
           <div style="height:6px;background:#0f172a;border-radius:3px">
             <div style="height:100%;width:${pct}%;background:#22c55e;border-radius:3px;opacity:.7"></div>
-          </div>
-        </div>`;
+          </div></div>`;
       }).join("");
 
-  // History
-  const all = [
-    ...contributions.map(c=>({...c,kind:"in"})),
-    ...expenses.map(e=>({...e,kind:"out"}))
-  ].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const all=[...contributions.map(c=>({...c,kind:"in"})),...expenses.map(e=>({...e,kind:"out"}))].sort((a,b)=>new Date(a.date)-new Date(b.date));
   document.getElementById("history-list").innerHTML = all.length===0
     ? '<div style="color:#475569;font-size:13px;text-align:center;padding:20px">No activity yet</div>'
     : all.map(item=>`
@@ -223,7 +202,7 @@ function render(){
           <div style="width:32px;height:32px;border-radius:8px;background:${item.kind==="in"?"#14532d":"#431407"};display:flex;align-items:center;justify-content:center;font-size:16px">${item.kind==="in"?"↑":"↓"}</div>
           <div>
             <div style="font-size:13px;color:#e2e8f0;display:flex;align-items:center;gap:8px">
-              ${item.kind==="in" ? (item.note ? noteTag(item.note) : "Contribution received") : item.description||catTag(item.category)}
+              ${item.kind==="in"?(item.note?noteTag(item.note):"Contribution received"):(item.description||catTag(item.category))}
             </div>
             <div style="font-size:11px;color:#64748b;margin-top:2px">${item.date}${item.kind==="out"?" · "+item.category:""}</div>
           </div>
@@ -231,44 +210,60 @@ function render(){
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:${item.kind==="in"?"#22c55e":"#f97316"}">${item.kind==="in"?"+":"-"}${fmt(item.amount)}</div>
       </div>`).join("");
 
-  // Contributions tab
-  document.getElementById("contrib-count").textContent = contributions.length;
-  const sorted = [...contributions].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  document.getElementById("contrib-tbody").innerHTML = sorted.length===0
+  document.getElementById("contrib-count").textContent=contributions.length;
+  const sc=[...contributions].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  document.getElementById("contrib-tbody").innerHTML=sc.length===0
     ? '<tr><td colspan="4" style="text-align:center;color:#475569">No contributions yet</td></tr>'
-    : sorted.map(c=>`<tr>
+    : sc.map(c=>`<tr>
         <td style="color:#64748b;font-size:12px">${c.date}</td>
         <td><span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:#14532d22;color:#22c55e;border:1px solid #14532d">${c.anonymized}</span></td>
         <td>${noteTag(c.note)}</td>
         <td style="text-align:right;color:#22c55e;font-weight:500">${fmt(c.amount)}</td>
       </tr>`).join("");
 
-  // Expenses tab
-  document.getElementById("exp-count").textContent = expenses.length;
-  const sortedExp = [...expenses].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  document.getElementById("exp-tbody").innerHTML = sortedExp.length===0
+  document.getElementById("exp-count").textContent=expenses.length;
+  const se=[...expenses].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  window._expenses=expenses;
+  document.getElementById("exp-tbody").innerHTML=se.length===0
     ? '<tr><td colspan="4" style="text-align:center;color:#475569">No expenses yet</td></tr>'
-    : sortedExp.map(e=>`<tr>
+    : se.map(e=>`<tr>
         <td style="color:#64748b;font-size:12px;white-space:nowrap">${e.date}</td>
         <td>${catTag(e.category)}</td>
-        <td>${e.receipt && e.receipt.startsWith("data:image")
-          ? `<img src="${e.receipt}" style="height:36px;width:36px;object-fit:cover;border-radius:4px;border:1px solid #334155;cursor:pointer" onclick="openLightbox('${e.receipt}')" title="Click to view">"
-          : '<span style="color:#475569;font-size:12px">—</span>'}</td>
+        <td>${e.receipt&&e.receipt.startsWith("data:image")?`<img src="${e.receipt}" style="height:36px;width:36px;object-fit:cover;border-radius:4px;border:1px solid #334155;cursor:pointer" onclick="window.viewReceipt('${e.id}')" title="Click to view">`:'<span style="color:#475569;font-size:12px">—</span>'}</td>
         <td style="text-align:right;color:#f97316;font-weight:500">${fmt(e.amount)}</td>
       </tr>`).join("");
 }
 
-function openLightbox(src){
-  document.getElementById("lightbox-img").src = src;
-  document.getElementById("lightbox").style.display = "flex";
-}
-function closeLightbox(){
-  document.getElementById("lightbox").style.display = "none";
-}
+// Real-time listeners
+onSnapshot(doc(db,"club","contributions"), snap=>{
+  contributions = snap.exists()?(snap.data().list||[]):[];
+  document.getElementById("sync-status").textContent="● live";
+  document.getElementById("sync-status").style.color="#22c55e";
+  render();
+}, ()=>{
+  document.getElementById("sync-status").textContent="⚠ offline";
+  document.getElementById("sync-status").style.color="#ef4444";
+});
 
-// Poll for updates every 5s (in case admin makes changes)
-render();
-setInterval(render, 5000);
+onSnapshot(doc(db,"club","expenses"), snap=>{
+  expenses = snap.exists()?(snap.data().list||[]):[];
+  render();
+});
+
+window.showTab = t=>{
+  ["dashboard","contributions","expenses"].forEach(id=>{
+    document.getElementById("tab-"+id).style.display=id===t?"block":"none";
+  });
+  document.querySelectorAll(".tab-btn").forEach(b=>{
+    b.classList.toggle("active",b.textContent.trim().toLowerCase()===t);
+  });
+};
+
+window.viewReceipt = id=>{
+  const e=(window._expenses||[]).find(x=>x.id===id);
+  if(e&&e.receipt){document.getElementById("lightbox-img").src=e.receipt;document.getElementById("lightbox").style.display="flex";}
+};
+window.closeLightbox=()=>{document.getElementById("lightbox").style.display="none";};
 </script>
 </body>
 </html>

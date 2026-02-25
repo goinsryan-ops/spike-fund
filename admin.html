@@ -1,18 +1,529 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin</title>
-    <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spike Fund – Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f172a;color:#e2e8f0;font-family:'DM Mono',monospace;min-height:100vh}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#1e293b}::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#64748b;padding:8px 12px;border-bottom:1px solid #1e293b}
+  td{padding:10px 12px;font-size:13px;border-bottom:1px solid #1e293b;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#ffffff08}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:16px}
+  .btn-primary{background:#f97316;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.05em;cursor:pointer}
+  .btn-primary:hover{background:#ea6c00}
+  .btn-green{background:#22c55e;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer}
+  .btn-ghost{background:none;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer}
+  .btn-ghost:hover{border-color:#ef4444;color:#ef4444}
+  .input{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;color:#e2e8f0;font-family:'DM Mono',monospace;font-size:13px;width:100%;outline:none}
+  .input:focus{border-color:#f97316}
+  .tab-btn{background:none;border:none;padding:10px 20px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#64748b;border-bottom:2px solid transparent;cursor:pointer}
+  .tab-btn.active{color:#f97316;border-bottom-color:#f97316}
+  .label{font-size:11px;letter-spacing:.1em;color:#64748b;text-transform:uppercase}
+  select option,select optgroup{background:#0f172a;color:#e2e8f0}
+  .modal{position:fixed;inset:0;background:#000000cc;display:flex;align-items:center;justify-content:center;z-index:1000;cursor:zoom-out}
+  .modal img{max-width:90vw;max-height:90vh;border-radius:12px;box-shadow:0 0 60px #000}
+  .modal-close{position:absolute;top:20px;right:24px;color:#94a3b8;font-size:24px;cursor:pointer;background:none;border:none}
+  #save-status{font-size:11px;min-width:80px;text-align:right}
+  #pw-screen{position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:9999}
+  #pw-box{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:40px;width:360px;text-align:center}
+</style>
 </head>
 <body>
-    <div class="container">
-        <img src="spike_fund_logo.png" alt="SPIKE FUND Logo" class="logo">
-        <h1>ADMIN ACCESS</h1>
-        <input type="password" placeholder="Enter password" id="password">
-        <div id="error-message" class="error-message"></div>
-        <button id="unlock-button">Unlock</button>
+
+<!-- PASSWORD SCREEN -->
+<div id="pw-screen">
+  <div id="pw-box">
+    <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#f97316;margin-bottom:8px">⬡ SPIKE FUND</div>
+    <div style="font-size:12px;color:#64748b;letter-spacing:.1em;margin-bottom:28px">ADMIN ACCESS</div>
+    <input class="input" type="password" id="pw-input" placeholder="Enter admin password" style="margin-bottom:12px;text-align:center" onkeydown="if(event.key==='Enter')checkPw()">
+    <div id="pw-error" style="color:#ef4444;font-size:12px;margin-bottom:12px;min-height:18px"></div>
+    <button class="btn-primary" style="width:100%" onclick="checkPw()">Unlock</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <div style="background:#1e293b;border-bottom:1px solid #334155;padding:0 24px">
+    <div style="max-width:1200px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 0">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#f97316;letter-spacing:-.02em">⬡ SPIKE FUND</div>
+          <div style="font-size:11px;color:#64748b;letter-spacing:.1em;margin-top:2px">ADMIN · FULL ACCESS</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <a href="index.html" style="font-size:11px;color:#475569;text-decoration:none;padding:6px 12px;border:1px solid #334155;border-radius:6px">← Public View</a>
+          <span id="save-status" style="font-size:11px;color:#22c55e;min-width:80px;text-align:right"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:8px">
+        <button class="tab-btn active" onclick="showTab('import')">Import</button>
+        <button class="tab-btn" onclick="showTab('contributions')">Contributions</button>
+        <button class="tab-btn" onclick="showTab('expenses')">Expenses</button>
+      </div>
     </div>
+  </div>
+
+  <div style="max-width:1200px;margin:0 auto;padding:28px 24px">
+
+    <!-- IMPORT -->
+    <div id="tab-import">
+      <div class="card">
+        <div class="label" style="margin-bottom:8px">Import Venmo CSV</div>
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:16px;line-height:1.7">
+          In Venmo: <strong style="color:#e2e8f0">Settings → Statements → Download CSV</strong>. Open the file, select all, paste below.
+          Real names stay visible here only. Assigning a transaction type and confirming pushes anonymized data live to the public page instantly.
+        </div>
+        <textarea class="input" id="csv-input" style="height:200px;resize:vertical;line-height:1.5;font-size:12px" placeholder="Paste Venmo CSV data here…" oninput="clearPreview()"></textarea>
+        <div id="csv-error" style="color:#ef4444;font-size:12px;margin-top:8px;min-height:18px"></div>
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="parseCSV()">Preview Import</button>
+          <button class="btn-green" id="confirm-btn" style="display:none" onclick="confirmImport()">✓ Confirm Import</button>
+        </div>
+      </div>
+
+      <div class="card" id="preview-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div class="label">Preview — <span id="preview-count">0</span> transactions</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:#64748b">Apply to all:</span>
+            <select class="input" style="width:auto;font-size:11px;padding:4px 8px" onchange="applyToAll(this.value);this.value=''">
+              <option value="">— select type —</option>
+              <optgroup label="Money Received">
+                <option>Reimbursement – Court Fees</option>
+                <option>Reimbursement – Coaching Fees</option>
+                <option>Reimbursement – Tournament Fees</option>
+                <option>Season Continuation Payment</option>
+              </optgroup>
+              <optgroup label="Club Payments (we paid out)">
+                <option>Club Payment – Court Fees</option>
+                <option>Club Payment – Coaching Fees</option>
+                <option>Club Payment – Tournament Fees</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="min-width:950px">
+            <thead><tr>
+              <th style="width:80px">Dir</th>
+              <th style="width:100px">Date</th>
+              <th style="width:170px">Real Name</th>
+              <th style="width:160px">Venmo Note</th>
+              <th>Transaction Type</th>
+              <th style="text-align:right;width:110px">Amount</th>
+            </tr></thead>
+            <tbody id="preview-tbody"></tbody>
+          </table>
+        </div>
+        <div id="preview-more" style="text-align:center;padding:12px 0;color:#64748b;font-size:12px;display:none"></div>
+      </div>
+    </div>
+
+    <!-- CONTRIBUTIONS -->
+    <div id="tab-contributions" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div class="label">All Contributions (<span id="contrib-count">0</span>)</div>
+          <button class="btn-primary" onclick="showTab('import')">+ Import Venmo CSV</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Date</th><th>Real Name</th><th>Family Label</th><th>Transaction Type</th><th style="text-align:right">Amount</th><th></th></tr></thead>
+            <tbody id="contrib-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div id="tab-expenses" style="display:none">
+      <div class="card">
+        <div class="label" style="margin-bottom:16px">Log Expense</div>
+        <div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Date</div>
+            <input type="date" class="input" id="exp-date">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Description</div>
+            <input type="text" class="input" id="exp-desc" placeholder="e.g. Court rental at rec center">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Category</div>
+            <select class="input" id="exp-cat">
+              <option>Tournament Fees</option>
+              <option>Coaching/Training</option>
+              <option>Facility Rental</option>
+              <option>Other/Misc</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Amount ($)</div>
+            <input type="number" step="0.01" min="0" class="input" id="exp-amt" placeholder="0.00">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Receipt (optional)</div>
+            <label style="display:inline-flex;align-items:center;gap:8px;background:#0f172a;border:1px dashed #334155;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:12px;color:#94a3b8">
+              📎 <span id="receipt-name">Attach receipt</span>
+              <input type="file" accept="image/*,application/pdf" style="display:none" onchange="handleReceipt(this)">
+            </label>
+          </div>
+          <img id="receipt-preview" style="height:48px;width:48px;object-fit:cover;border-radius:6px;border:1px solid #334155;display:none">
+          <span id="pdf-indicator" style="font-size:11px;color:#60a5fa;display:none">📄 PDF attached</span>
+          <button class="btn-ghost" id="remove-receipt" style="font-size:11px;display:none" onclick="removeReceipt()">Remove</button>
+          <button class="btn-primary" style="margin-left:auto" onclick="addExpense()">Add Expense</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label" style="margin-bottom:16px">All Expenses (<span id="exp-count">0</span>)</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Receipt</th><th style="text-align:right">Amount</th><th></th></tr></thead>
+            <tbody id="exp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="lightbox" class="modal" style="display:none" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="receipt">
+  <button class="modal-close" onclick="closeLightbox()">✕</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+// ── CHANGE YOUR PASSWORD HERE ────────────────────────────────────────────────
+const ADMIN_PASSWORD = "spikefund2024";
+// ─────────────────────────────────────────────────────────────────────────────
+
+const app = initializeApp({
+  apiKey: "AIzaSyDOHDRFWSK_5cT7Porh39ODsBLB3uEVxj4",
+  authDomain: "spike-fund.firebaseapp.com",
+  projectId: "spike-fund",
+  storageBucket: "spike-fund.firebasestorage.app",
+  messagingSenderId: "466812224168",
+  appId: "1:466812224168:web:9164751b0ae374da44f89d"
+});
+const db = getFirestore(app);
+
+const CATEGORIES = ["Tournament Fees","Coaching/Training","Facility Rental","Other/Misc"];
+const CATEGORY_COLORS = {"Tournament Fees":"#f97316","Coaching/Training":"#3b82f6","Facility Rental":"#8b5cf6","Other/Misc":"#6b7280"};
+const NOTE_COLORS = {
+  "Reimbursement – Court Fees":      {bg:"#1e3a5f22",color:"#60a5fa",border:"#1e3a5f"},
+  "Reimbursement – Coaching Fees":   {bg:"#1e3a5f22",color:"#60a5fa",border:"#1e3a5f"},
+  "Reimbursement – Tournament Fees": {bg:"#1e3a5f22",color:"#60a5fa",border:"#1e3a5f"},
+  "Season Continuation Payment":     {bg:"#14532d22",color:"#4ade80",border:"#14532d"},
+  "Club Payment – Court Fees":       {bg:"#3b1f6022",color:"#c084fc",border:"#3b1f60"},
+  "Club Payment – Coaching Fees":    {bg:"#3b1f6022",color:"#c084fc",border:"#3b1f60"},
+  "Club Payment – Tournament Fees":  {bg:"#3b1f6022",color:"#c084fc",border:"#3b1f60"},
+};
+const FAMILY_NAMES = ["Family A","Family B","Family C","Family D","Family E","Family F","Family G","Family H","Family I","Family J","Family K","Family L","Family M","Family N","Family O","Family P","Family Q","Family R","Family S","Family T"];
+const CATEGORY_MAP = {
+  "Club Payment – Court Fees":"Facility Rental","Club Payment – Coaching Fees":"Coaching/Training","Club Payment – Tournament Fees":"Tournament Fees",
+  "Reimbursement – Court Fees":"Facility Rental","Reimbursement – Coaching Fees":"Coaching/Training","Reimbursement – Tournament Fees":"Tournament Fees",
+  "Season Continuation Payment":"Other/Misc",
+};
+
+const fmt = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
+const noteTag = note => {
+  if(!note) return '<span style="color:#475569">—</span>';
+  const s=NOTE_COLORS[note]||{bg:"#1e293b",color:"#94a3b8",border:"#334155"};
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${s.bg};color:${s.color};border:1px solid ${s.border}">${note}</span>`;
+};
+const catTag = cat => {
+  const c=CATEGORY_COLORS[cat]||"#6b7280";
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${c}22;color:${c};border:1px solid ${c}44">${cat}</span>`;
+};
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+window.checkPw = function(){
+  if(document.getElementById("pw-input").value===ADMIN_PASSWORD||sessionStorage.getItem("vb-auth")==="1"){
+    sessionStorage.setItem("vb-auth","1");
+    document.getElementById("pw-screen").style.display="none";
+    document.getElementById("app").style.display="block";
+    startListeners();
+  } else {
+    document.getElementById("pw-error").textContent="Incorrect password.";
+  }
+};
+if(sessionStorage.getItem("vb-auth")==="1"){
+  document.getElementById("pw-screen").style.display="none";
+  document.getElementById("app").style.display="block";
+}
+
+// ── Live data ─────────────────────────────────────────────────────────────────
+let contributions=[], expenses=[], familyMap={};
+
+function setSaveStatus(msg,color="#22c55e"){
+  const el=document.getElementById("save-status");
+  el.textContent=msg;el.style.color=color;
+  if(msg==="saved ✓") setTimeout(()=>{el.textContent=""},2500);
+}
+
+async function saveContributions(list,fmap){
+  setSaveStatus("saving…","#94a3b8");
+  await setDoc(doc(db,"club","contributions"),{list,familyMap:fmap});
+  setSaveStatus("saved ✓");
+}
+async function saveExpenses(list){
+  setSaveStatus("saving…","#94a3b8");
+  await setDoc(doc(db,"club","expenses"),{list});
+  setSaveStatus("saved ✓");
+}
+
+function startListeners(){
+  onSnapshot(doc(db,"club","contributions"),snap=>{
+    const d=snap.exists()?snap.data():{};
+    contributions=d.list||[];
+    familyMap=d.familyMap||{};
+    renderContributions();
+  });
+  onSnapshot(doc(db,"club","expenses"),snap=>{
+    expenses=snap.exists()?(snap.data().list||[]):[];
+    renderExpenses();
+  });
+}
+if(sessionStorage.getItem("vb-auth")==="1") startListeners();
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+let activeTab="import";
+window.showTab = function(t){
+  ["import","contributions","expenses"].forEach(id=>{
+    document.getElementById("tab-"+id).style.display=id===t?"block":"none";
+  });
+  document.querySelectorAll(".tab-btn").forEach(b=>{
+    b.classList.toggle("active",b.textContent.trim().toLowerCase()===t);
+  });
+  activeTab=t;
+};
+
+// ── CSV Parser ────────────────────────────────────────────────────────────────
+let csvPreview=[], previewNotes={};
+
+function parseVenmoCSV(text){
+  const transactions=[];
+  const firstLines=text.split("\n").slice(0,5).join("\n");
+  const delim=firstLines.includes("\t")?"\t":",";
+  const lines=text.split("\n").map(l=>l.trimEnd()).filter(l=>l.trim()!=="");
+  let headerIdx=-1;
+  for(let i=0;i<lines.length;i++){if(lines[i].toLowerCase().includes("datetime")){headerIdx=i;break;}}
+  if(headerIdx===-1) return{transactions,error:"Could not find Venmo CSV header row."};
+  const headers=lines[headerIdx].split(delim).map(h=>h.trim().toLowerCase().replace(/^"|"$/g,""));
+  const dateIdx=headers.findIndex(h=>h==="datetime"||h==="date");
+  const fromIdx=headers.findIndex(h=>h==="from");
+  const toIdx=headers.findIndex(h=>h==="to");
+  const amountIdx=headers.findIndex(h=>h==="amount (total)"||h==="amount");
+  const noteIdx=headers.findIndex(h=>h==="note");
+  const idIdx=headers.findIndex(h=>h==="id");
+  const statusIdx=headers.findIndex(h=>h==="status");
+  for(let i=headerIdx+1;i<lines.length;i++){
+    const row=lines[i].split(delim).map(c=>c.trim().replace(/^"|"$/g,""));
+    if(row.length<4) continue;
+    const clean=idx=>(idx>=0&&row[idx]!=null)?row[idx].trim():"";
+    if(clean(statusIdx)&&clean(statusIdx).toLowerCase()!=="complete") continue;
+    const dateRaw=clean(dateIdx);
+    if(!dateRaw||!dateRaw.match(/\d{4}/)) continue;
+    const amountRaw=clean(amountIdx);
+    const isNeg=amountRaw.startsWith("(")||amountRaw.startsWith("-");
+    const amountNum=parseFloat(amountRaw.replace(/[^0-9.]/g,""));
+    if(isNaN(amountNum)||amountNum===0) continue;
+    const from=clean(fromIdx),to=clean(toIdx);
+    transactions.push({id:clean(idIdx)||`venmo-${i}`,date:dateRaw.split("T")[0],from,to,realName:from||to||"Unknown",venmoNote:clean(noteIdx),amount:isNeg?-amountNum:amountNum});
+  }
+  return{transactions,error:null};
+}
+
+window.clearPreview=function(){
+  csvPreview=[];previewNotes={};
+  document.getElementById("preview-card").style.display="none";
+  document.getElementById("confirm-btn").style.display="none";
+  document.getElementById("csv-error").textContent="";
+};
+
+window.parseCSV=function(){
+  document.getElementById("csv-error").textContent="";
+  const{transactions,error}=parseVenmoCSV(document.getElementById("csv-input").value);
+  if(error){document.getElementById("csv-error").textContent=error;return;}
+  if(transactions.length===0){document.getElementById("csv-error").textContent="No transactions found.";return;}
+  const tempMap={...familyMap};
+  csvPreview=transactions.map(t=>{
+    const key=t.realName.trim().toLowerCase();
+    if(!tempMap[key]){const used=Object.values(tempMap);tempMap[key]=FAMILY_NAMES.find(n=>!used.includes(n))||`Family ${Object.keys(tempMap).length+1}`;}
+    return{...t,anonymized:tempMap[key]};
+  }).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  previewNotes={};
+  renderPreview();
+  document.getElementById("preview-card").style.display="block";
+  document.getElementById("confirm-btn").style.display="inline-block";
+  document.getElementById("confirm-btn").textContent=`✓ Confirm Import (${csvPreview.length} transactions)`;
+};
+
+function noteSelectHtml(id,val){
+  const opts=[["Reimbursement – Court Fees","Reimbursement – Coaching Fees","Reimbursement – Tournament Fees","Season Continuation Payment"],["Club Payment – Court Fees","Club Payment – Coaching Fees","Club Payment – Tournament Fees"]];
+  return `<select class="input" style="font-size:11px;padding:4px 8px;width:auto;min-width:190px" onchange="window.setNote('${id}',this.value)">
+    <option value="">— select type —</option>
+    <optgroup label="Money Received">${opts[0].map(o=>`<option${val===o?" selected":""}>${o}</option>`).join("")}</optgroup>
+    <optgroup label="Club Payments (we paid out)">${opts[1].map(o=>`<option${val===o?" selected":""}>${o}</option>`).join("")}</optgroup>
+  </select>`;
+}
+
+window.setNote=function(id,val){previewNotes[id]=val;renderPreview();};
+
+function renderPreview(){
+  document.getElementById("preview-count").textContent=csvPreview.length;
+  document.getElementById("preview-tbody").innerHTML=csvPreview.slice(0,50).map(t=>{
+    const isIn=t.amount>=0;
+    const note=previewNotes[t.id]||"";
+    const dirTag=`<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${isIn?"#14532d22":"#431407"};color:${isIn?"#22c55e":"#f97316"};border:1px solid ${isIn?"#14532d":"#7c2d12"}">${isIn?"↑ IN":"↓ OUT"}</span>`;
+    const typeCell=note?`<div style="display:flex;align-items:center;gap:8px">${noteTag(note)}<button class="btn-ghost" style="font-size:10px;padding:2px 8px" onclick="window.setNote('${t.id}','');renderPreview()">edit</button></div>`:noteSelectHtml(t.id,note);
+    return`<tr>
+      <td style="width:80px">${dirTag}</td>
+      <td style="color:#64748b;font-size:12px;width:100px">${t.date}</td>
+      <td style="color:#e2e8f0;font-size:13px;width:170px">${t.realName}</td>
+      <td style="color:#94a3b8;font-size:12px;width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.venmoNote||""}">${t.venmoNote||"—"}</td>
+      <td>${typeCell}</td>
+      <td style="text-align:right;width:110px;color:${isIn?"#22c55e":"#f97316"};font-weight:500;font-family:'Syne',sans-serif;font-size:15px">${isIn?"+":"-"}${fmt(Math.abs(t.amount))}</td>
+    </tr>`;
+  }).join("");
+  if(csvPreview.length>50){document.getElementById("preview-more").style.display="block";document.getElementById("preview-more").textContent=`… and ${csvPreview.length-50} more`;}
+}
+
+window.applyToAll=function(val){
+  if(!val) return;
+  csvPreview.forEach(t=>{previewNotes[t.id]=val;});
+  renderPreview();
+};
+
+window.confirmImport=async function(){
+  const tempMap={...familyMap};
+  const newContribs=[],newExps=[];
+  csvPreview.forEach(t=>{
+    const key=t.realName.trim().toLowerCase();
+    if(!tempMap[key]){const used=Object.values(tempMap);tempMap[key]=FAMILY_NAMES.find(n=>!used.includes(n))||`Family ${Object.keys(tempMap).length+1}`;}
+    const note=previewNotes[t.id]||"";
+    if(t.amount>=0){
+      newContribs.push({id:t.id,date:t.date,note,amount:t.amount,anonymized:tempMap[key],realName:t.realName});
+    } else {
+      newExps.push({id:t.id,date:t.date,description:note||`Venmo payment (${tempMap[key]})`,category:CATEGORY_MAP[note]||"Other/Misc",amount:Math.abs(t.amount),anonymized:tempMap[key]});
+    }
+  });
+  const existingCIds=new Set(contributions.map(c=>c.id));
+  const existingEIds=new Set(expenses.map(e=>e.id));
+  const updatedC=[...contributions,...newContribs.filter(c=>!existingCIds.has(c.id))];
+  const updatedE=[...expenses,...newExps.filter(e=>!existingEIds.has(e.id))];
+  await saveContributions(updatedC,tempMap);
+  await saveExpenses(updatedE);
+  window.clearPreview();
+  document.getElementById("csv-input").value="";
+  window.showTab("contributions");
+};
+
+// ── Expense form ──────────────────────────────────────────────────────────────
+let pendingReceipt=null,pendingReceiptName="";
+
+window.handleReceipt=function(input){
+  const file=input.files[0];if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    pendingReceipt=ev.target.result;pendingReceiptName=file.name;
+    document.getElementById("receipt-name").textContent=file.name;
+    if(pendingReceipt.startsWith("data:image")){
+      document.getElementById("receipt-preview").src=pendingReceipt;
+      document.getElementById("receipt-preview").style.display="block";
+      document.getElementById("pdf-indicator").style.display="none";
+    } else {
+      document.getElementById("receipt-preview").style.display="none";
+      document.getElementById("pdf-indicator").style.display="inline";
+    }
+    document.getElementById("remove-receipt").style.display="inline-block";
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeReceipt=function(){
+  pendingReceipt=null;pendingReceiptName="";
+  document.getElementById("receipt-name").textContent="Attach receipt";
+  document.getElementById("receipt-preview").style.display="none";
+  document.getElementById("pdf-indicator").style.display="none";
+  document.getElementById("remove-receipt").style.display="none";
+};
+
+window.addExpense=async function(){
+  const date=document.getElementById("exp-date").value;
+  const desc=document.getElementById("exp-desc").value.trim();
+  const cat=document.getElementById("exp-cat").value;
+  const amt=parseFloat(document.getElementById("exp-amt").value);
+  if(!date||!desc||isNaN(amt)||amt<=0){alert("Please fill in Date, Description and Amount.");return;}
+  const newExp={id:`exp-${Date.now()}`,date,description:desc,category:cat,amount:amt,receipt:pendingReceipt,receiptName:pendingReceiptName};
+  await saveExpenses([...expenses,newExp]);
+  document.getElementById("exp-date").value="";
+  document.getElementById("exp-desc").value="";
+  document.getElementById("exp-amt").value="";
+  window.removeReceipt();
+};
+
+window.deleteExpense=async function(id){
+  if(!confirm("Delete this expense?")) return;
+  await saveExpenses(expenses.filter(e=>e.id!==id));
+};
+
+window.deleteContribution=async function(id){
+  if(!confirm("Delete this contribution?")) return;
+  await saveContributions(contributions.filter(c=>c.id!==id),familyMap);
+};
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderContributions(){
+  document.getElementById("contrib-count").textContent=contributions.length;
+  const sorted=[...contributions].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  document.getElementById("contrib-tbody").innerHTML=sorted.length===0
+    ? '<tr><td colspan="6" style="text-align:center;color:#475569">No contributions yet</td></tr>'
+    : sorted.map(c=>`<tr>
+        <td style="color:#64748b;font-size:12px">${c.date}</td>
+        <td style="color:#e2e8f0">${c.realName||"—"}</td>
+        <td><span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:#14532d22;color:#22c55e;border:1px solid #14532d">${c.anonymized}</span></td>
+        <td>${noteTag(c.note)}</td>
+        <td style="text-align:right;color:#22c55e;font-weight:500">${fmt(c.amount)}</td>
+        <td><button class="btn-ghost" onclick="window.deleteContribution('${c.id}')">✕</button></td>
+      </tr>`).join("");
+}
+
+function renderExpenses(){
+  document.getElementById("exp-count").textContent=expenses.length;
+  const sorted=[...expenses].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  window._expenses=expenses;
+  document.getElementById("exp-tbody").innerHTML=sorted.length===0
+    ? '<tr><td colspan="6" style="text-align:center;color:#475569">No expenses yet</td></tr>'
+    : sorted.map(e=>`<tr>
+        <td style="color:#64748b;font-size:12px;white-space:nowrap">${e.date}</td>
+        <td style="color:#cbd5e1">${e.description||"—"}</td>
+        <td>${catTag(e.category)}</td>
+        <td>${e.receipt&&e.receipt.startsWith("data:image")?`<img src="${e.receipt}" style="height:36px;width:36px;object-fit:cover;border-radius:4px;border:1px solid #334155;cursor:pointer" onclick="window.openLightbox('${e.id}')" title="Click to view">`:e.receipt?`<button class="btn-ghost" style="font-size:11px" onclick="window.openLightbox('${e.id}')">📄 PDF</button>`:'<span style="color:#475569;font-size:12px">—</span>'}</td>
+        <td style="text-align:right;color:#f97316;font-weight:500">${fmt(e.amount)}</td>
+        <td><button class="btn-ghost" onclick="window.deleteExpense('${e.id}')">✕</button></td>
+      </tr>`).join("");
+}
+
+window.openLightbox=function(id){
+  const e=(window._expenses||[]).find(x=>x.id===id);
+  if(!e||!e.receipt) return;
+  if(e.receipt.startsWith("data:image")){document.getElementById("lightbox-img").src=e.receipt;document.getElementById("lightbox").style.display="flex";}
+  else{const a=document.createElement("a");a.href=e.receipt;a.download="receipt.pdf";a.click();}
+};
+window.closeLightbox=()=>{document.getElementById("lightbox").style.display="none";};
+</script>
 </body>
 </html>
