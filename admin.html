@@ -109,14 +109,14 @@
           </div>
         </div>
         <div style="overflow-x:auto">
-          <table style="min-width:950px">
+          <table style="min-width:900px;table-layout:fixed;width:100%">
             <thead><tr>
-              <th style="width:80px">Dir</th>
-              <th style="width:100px">Date</th>
-              <th style="width:170px">Real Name</th>
+              <th style="width:70px">Dir</th>
+              <th style="width:90px">Date</th>
+              <th style="width:140px">Real Name</th>
               <th style="width:160px">Venmo Note</th>
-              <th>Transaction Type</th>
-              <th style="text-align:right;width:110px">Amount</th>
+              <th style="width:220px">Transaction Type</th>
+              <th style="text-align:right;width:100px">Amount</th>
             </tr></thead>
             <tbody id="preview-tbody"></tbody>
           </table>
@@ -390,12 +390,12 @@ function renderPreview(){
     const dirTag=`<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${isIn?"#14532d22":"#431407"};color:${isIn?"#22c55e":"#f97316"};border:1px solid ${isIn?"#14532d":"#7c2d12"}">${isIn?"↑ IN":"↓ OUT"}</span>`;
     const typeCell=note?`<div style="display:flex;align-items:center;gap:8px">${noteTag(note)}<button class="btn-ghost" style="font-size:10px;padding:2px 8px" onclick="window.setNote('${t.id}','');renderPreview()">edit</button></div>`:noteSelectHtml(t.id,note);
     return`<tr>
-      <td style="width:80px">${dirTag}</td>
-      <td style="color:#64748b;font-size:12px;width:100px">${t.date}</td>
-      <td style="color:#e2e8f0;font-size:13px;width:170px">${t.realName}</td>
+      <td style="width:70px">${dirTag}</td>
+      <td style="color:#64748b;font-size:12px;width:90px">${t.date}</td>
+      <td style="color:#e2e8f0;font-size:13px;width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.realName}</td>
       <td style="color:#94a3b8;font-size:12px;width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.venmoNote||""}">${t.venmoNote||"—"}</td>
-      <td>${typeCell}</td>
-      <td style="text-align:right;width:110px;color:${isIn?"#22c55e":"#f97316"};font-weight:500;font-family:'Syne',sans-serif;font-size:15px">${isIn?"+":"-"}${fmt(Math.abs(t.amount))}</td>
+      <td style="width:220px">${typeCell}</td>
+      <td style="text-align:right;width:100px;color:${isIn?"#22c55e":"#f97316"};font-weight:500;font-family:'Syne',sans-serif;font-size:15px">${isIn?"+":"-"}${fmt(Math.abs(t.amount))}</td>
     </tr>`;
   }).join("");
   if(csvPreview.length>50){document.getElementById("preview-more").style.display="block";document.getElementById("preview-more").textContent=`… and ${csvPreview.length-50} more`;}
