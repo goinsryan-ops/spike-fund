@@ -73,6 +73,12 @@
 
     <!-- IMPORT -->
     <div id="tab-import">
+      <!-- Budget Editor -->
+      <div class="card" style="border-color:#f97316aa">
+        <div class="label" style="margin-bottom:16px">Season Budget Targets <span style="color:#475569;font-size:10px;margin-left:8px">— updates the public dashboard instantly</span></div>
+        <div id="budget-editor" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px"></div>
+        <button class="btn-primary" onclick="window.saveBudgetFromForm()">Save Budget</button>
+      </div>
       <div class="card">
         <div class="label" style="margin-bottom:8px">Import Venmo CSV</div>
         <div style="font-size:13px;color:#94a3b8;margin-bottom:16px;line-height:1.7">
@@ -266,6 +272,7 @@ if(sessionStorage.getItem("vb-auth")==="1"){
 
 // ── Live data ─────────────────────────────────────────────────────────────────
 let contributions=[], expenses=[], familyMap={};
+let budget={"Tournament Fees":550,"Coaching/Training":2350,"Facility Rental":1200,"Other/Misc":0};
 
 function setSaveStatus(msg,color="#22c55e"){
   const el=document.getElementById("save-status");
@@ -283,6 +290,11 @@ async function saveExpenses(list){
   await setDoc(doc(db,"club","expenses"),{list});
   setSaveStatus("saved ✓");
 }
+async function saveBudget(b){
+  setSaveStatus("saving…","#94a3b8");
+  await setDoc(doc(db,"club","budget"),{targets:b});
+  setSaveStatus("saved ✓");
+}
 
 function startListeners(){
   onSnapshot(doc(db,"club","contributions"),snap=>{
@@ -294,6 +306,10 @@ function startListeners(){
   onSnapshot(doc(db,"club","expenses"),snap=>{
     expenses=snap.exists()?(snap.data().list||[]):[];
     renderExpenses();
+  });
+  onSnapshot(doc(db,"club","budget"),snap=>{
+    if(snap.exists()&&snap.data().targets) budget=snap.data().targets;
+    renderBudgetEditor();
   });
 }
 if(sessionStorage.getItem("vb-auth")==="1") startListeners();
@@ -486,6 +502,28 @@ window.deleteContribution=async function(id){
 };
 
 // ── Render ────────────────────────────────────────────────────────────────────
+function renderBudgetEditor(){
+  const cats=["Tournament Fees","Coaching/Training","Facility Rental","Other/Misc"];
+  const el=document.getElementById("budget-editor");
+  if(!el) return;
+  el.innerHTML=cats.map(cat=>`
+    <div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:6px">${cat}</div>
+      <input type="number" step="1" min="0" class="input" id="budget-${cat.replace(/[^a-z]/gi,'_')}" value="${budget[cat]||0}" placeholder="0">
+    </div>`).join("");
+}
+
+window.saveBudgetFromForm=async function(){
+  const cats=["Tournament Fees","Coaching/Training","Facility Rental","Other/Misc"];
+  const newBudget={};
+  cats.forEach(cat=>{
+    const el=document.getElementById("budget-"+cat.replace(/[^a-z]/gi,"_"));
+    newBudget[cat]=parseFloat(el?el.value:0)||0;
+  });
+  budget=newBudget;
+  await saveBudget(newBudget);
+};
+
 function renderContributions(){
   document.getElementById("contrib-count").textContent=contributions.length;
   const sorted=[...contributions].sort((a,b)=>new Date(a.date)-new Date(b.date));

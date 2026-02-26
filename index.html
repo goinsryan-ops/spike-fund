@@ -46,6 +46,9 @@
 
   <!-- DASHBOARD -->
   <div id="tab-dashboard">
+    <!-- Budget Card -->
+    <div id="budget-card" class="card" style="margin-bottom:24px;border-color:#334155"></div>
+
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
       <div class="card">
         <div class="label" style="margin-bottom:8px">Total Raised</div>
@@ -149,9 +152,75 @@ const catTag = cat => {
   return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:${c}22;color:${c};border:1px solid ${c}44">${cat}</span>`;
 };
 
-let contributions = [], expenses = [];
+let contributions = [], expenses = [], budget = {"Tournament Fees":550,"Coaching/Training":2350,"Facility Rental":1200,"Other/Misc":0};
+
+function renderBudget(){
+  const el=document.getElementById("budget-card");
+  if(!el) return;
+  const CATS=["Tournament Fees","Coaching/Training","Facility Rental","Other/Misc"];
+  const CCOLORS={"Tournament Fees":"#f97316","Coaching/Training":"#3b82f6","Facility Rental":"#8b5cf6","Other/Misc":"#6b7280"};
+  const totalBudget=CATS.reduce((s,c)=>s+(budget[c]||0),0);
+  const totalContrib=contributions.reduce((s,c)=>s+c.amount,0);
+  const gap=totalBudget-totalContrib;
+  const gapColor=gap<=0?"#22c55e":"#ef4444";
+
+  const rows=CATS.map(cat=>{
+    const b=budget[cat]||0;
+    const contributed=contributions.filter(c=>{
+      // match contribution type to category
+      const typeMap={"Reimbursement – Court Fees":"Facility Rental","Reimbursement – Coaching Fees":"Coaching/Training","Reimbursement – Tournament Fees":"Tournament Fees","Season Continuation Payment":"Other/Misc","Club Payment – Court Fees":"Facility Rental","Club Payment – Coaching Fees":"Coaching/Training","Club Payment – Tournament Fees":"Tournament Fees"};
+      return typeMap[c.note]===cat;
+    }).reduce((s,c)=>s+c.amount,0);
+    const pct=b>0?Math.min((contributed/b)*100,100):0;
+    const c=CCOLORS[cat];
+    if(b===0) return "";
+    return `<tr>
+      <td style="color:#cbd5e1;font-size:13px">${cat}</td>
+      <td style="text-align:right;color:${c};font-weight:500">${fmt(b)}</td>
+      <td style="text-align:right;color:#22c55e;font-weight:500">${fmt(contributed)}</td>
+      <td style="text-align:right;color:${contributed>=b?"#22c55e":"#ef4444"};font-weight:500">${fmt(b-contributed)}</td>
+      <td style="width:120px">
+        <div style="height:6px;background:#0f172a;border-radius:3px">
+          <div style="height:100%;width:${pct}%;background:${c};border-radius:3px;transition:width .6s"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div class="label">Season Budget</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div style="text-align:right">
+          <div style="font-size:11px;color:#64748b;margin-bottom:2px">Total Budget</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#e2e8f0">${fmt(totalBudget)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:#64748b;margin-bottom:2px">Contributed</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#22c55e">${fmt(totalContrib)}</div>
+        </div>
+        <div style="text-align:right;padding-left:16px;border-left:1px solid #334155">
+          <div style="font-size:11px;color:#64748b;margin-bottom:2px">${gap<=0?"Surplus":"Still Needed"}</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${gapColor}">${fmt(Math.abs(gap))}</div>
+        </div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Category</th>
+          <th style="text-align:right">Budget</th>
+          <th style="text-align:right">Contributed</th>
+          <th style="text-align:right">Gap</th>
+          <th style="width:120px">Progress</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
 
 function render(){
+  renderBudget();
   const totalIn  = contributions.reduce((s,c)=>s+c.amount,0);
   const totalOut = expenses.reduce((s,e)=>s+e.amount,0);
   const balance  = totalIn-totalOut;
@@ -243,6 +312,11 @@ onSnapshot(doc(db,"club","contributions"), snap=>{
 }, ()=>{
   document.getElementById("sync-status").textContent="⚠ offline";
   document.getElementById("sync-status").style.color="#ef4444";
+});
+
+onSnapshot(doc(db,"club","budget"),snap=>{
+  if(snap.exists()&&snap.data().targets) budget=snap.data().targets;
+  render();
 });
 
 onSnapshot(doc(db,"club","expenses"), snap=>{
