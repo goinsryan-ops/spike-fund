@@ -133,6 +133,62 @@
 
     <!-- CONTRIBUTIONS -->
     <div id="tab-contributions" style="display:none">
+
+      <!-- Manual Contribution Form -->
+      <div class="card">
+        <div class="label" style="margin-bottom:16px">Log Manual Contribution <span style="color:#475569;font-size:10px;margin-left:8px">— cash, check, or anything not via Venmo</span></div>
+        <div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Date</div>
+            <input type="date" class="input" id="mc-date">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Name</div>
+            <input type="text" class="input" id="mc-name" placeholder="e.g. Sarah Johnson" oninput="suggestFamily()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Transaction Type</div>
+            <select class="input" id="mc-type">
+              <option value="">— select type —</option>
+              <optgroup label="Money Received">
+                <option>Reimbursement – Court Fees</option>
+                <option>Reimbursement – Coaching Fees</option>
+                <option>Reimbursement – Tournament Fees</option>
+                <option>Season Continuation Payment</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Amount ($)</div>
+            <input type="number" step="0.01" min="0" class="input" id="mc-amt" placeholder="0.00">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">Family Label <span id="mc-family-hint" style="color:#f97316"></span></div>
+            <select class="input" id="mc-family">
+              <option value="">— assign family label —</option>
+            </select>
+          </div>
+          <button class="btn-green" style="margin-top:18px" onclick="window.addManualContribution()">Add Contribution</button>
+        </div>
+      </div>
+
+      <!-- Name → Family Mapping Table -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="label">Name → Family Mapping (<span id="mapping-count">0</span> people)</div>
+          <span style="font-size:11px;color:#475569">Built automatically from Venmo imports + manual entries</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Real Name</th><th>Family Label</th><th>Total Contributed</th><th></th></tr></thead>
+            <tbody id="mapping-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- All Contributions -->
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div class="label">All Contributions (<span id="contrib-count">0</span>)</div>
@@ -524,7 +580,105 @@ window.saveBudgetFromForm=async function(){
   await saveBudget(newBudget);
 };
 
+window.suggestFamily=function(){
+  const name=document.getElementById("mc-name").value.trim().toLowerCase();
+  const hint=document.getElementById("mc-family-hint");
+  const sel=document.getElementById("mc-family");
+  if(familyMap[name]){
+    hint.textContent="→ already mapped to "+familyMap[name];
+    // Pre-select existing mapping
+    for(let i=0;i<sel.options.length;i++){
+      if(sel.options[i].value===familyMap[name]){sel.selectedIndex=i;break;}
+    }
+  } else {
+    hint.textContent="";
+  }
+};
+
+window.addManualContribution=async function(){
+  const date=document.getElementById("mc-date").value;
+  const name=document.getElementById("mc-name").value.trim();
+  const note=document.getElementById("mc-type").value;
+  const amt=parseFloat(document.getElementById("mc-amt").value);
+  const familyVal=document.getElementById("mc-family").value;
+  if(!date||!name||!note||isNaN(amt)||amt<=0){alert("Please fill in Date, Name, Transaction Type and Amount.");return;}
+
+  const key=name.toLowerCase();
+  const tempMap={...familyMap};
+
+  // Use selected family label or auto-assign
+  let label=familyVal;
+  if(!label){
+    if(tempMap[key]){
+      label=tempMap[key];
+    } else {
+      const used=Object.values(tempMap);
+      label=["Family A","Family B","Family C","Family D","Family E","Family F","Family G","Family H","Family I","Family J","Family K","Family L","Family M","Family N","Family O","Family P","Family Q","Family R","Family S","Family T"].find(n=>!used.includes(n))||"Family ?";
+    }
+  }
+  tempMap[key]=label;
+
+  const newContrib={id:`manual-${Date.now()}`,date,note,amount:amt,anonymized:label,realName:name,source:"manual"};
+  await saveContributions([...contributions,newContrib],tempMap);
+
+  // Reset form
+  document.getElementById("mc-date").value="";
+  document.getElementById("mc-name").value="";
+  document.getElementById("mc-type").value="";
+  document.getElementById("mc-amt").value="";
+  document.getElementById("mc-family").value="";
+  document.getElementById("mc-family-hint").textContent="";
+};
+
+function renderFamilyDropdown(){
+  const sel=document.getElementById("mc-family");
+  if(!sel) return;
+  const used=Object.values(familyMap).filter((v,i,a)=>a.indexOf(v)===i).sort();
+  const allLabels=["Family A","Family B","Family C","Family D","Family E","Family F","Family G","Family H","Family I","Family J","Family K","Family L","Family M","Family N","Family O","Family P","Family Q","Family R","Family S","Family T"];
+  const available=allLabels.filter(l=>!used.includes(l));
+  sel.innerHTML='<option value="">— assign family label —</option>'+
+    (used.length?'<optgroup label="Existing Families">'+used.map(l=>`<option value="${l}">${l}</option>`).join("")+"</optgroup>":"")+
+    '<optgroup label="New Labels">'+available.slice(0,5).map(l=>`<option value="${l}">${l}</option>`).join("")+"</optgroup>";
+}
+
+function renderMapping(){
+  const el=document.getElementById("mapping-tbody");
+  const countEl=document.getElementById("mapping-count");
+  if(!el) return;
+  const entries=Object.entries(familyMap).sort((a,b)=>a[1].localeCompare(b[1]));
+  countEl.textContent=entries.length;
+  el.innerHTML=entries.length===0
+    ? '<tr><td colspan="4" style="text-align:center;color:#475569">No mappings yet — import Venmo data or add manual contributions</td></tr>'
+    : entries.map(([key,label])=>{
+        const total=contributions.filter(c=>c.realName&&c.realName.toLowerCase()===key).reduce((s,c)=>s+c.amount,0);
+        const displayName=key.split(" ").map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
+        return`<tr>
+          <td style="color:#e2e8f0">${displayName}</td>
+          <td><span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;background:#14532d22;color:#22c55e;border:1px solid #14532d">${label}</span></td>
+          <td style="color:#22c55e;font-weight:500">${fmt(total)}</td>
+          <td>
+            <select style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:3px 6px;color:#e2e8f0;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer" onchange="window.remapFamily('${key}',this.value)">
+              <option value="${label}">${label}</option>
+              ${["Family A","Family B","Family C","Family D","Family E","Family F","Family G","Family H","Family I","Family J","Family K","Family L","Family M","Family N","Family O","Family P","Family Q","Family R","Family S","Family T"].filter(l=>l!==label).map(l=>`<option value="${l}">${l}</option>`).join("")}
+            </select>
+          </td>
+        </tr>`;
+      }).join("");
+}
+
+window.remapFamily=async function(key,newLabel){
+  const tempMap={...familyMap,[key]:newLabel};
+  // Update all contributions with this real name
+  const updatedC=contributions.map(c=>{
+    if(c.realName&&c.realName.toLowerCase()===key) return{...c,anonymized:newLabel};
+    return c;
+  });
+  await saveContributions(updatedC,tempMap);
+};
+
 function renderContributions(){
+  renderMapping();
+  renderFamilyDropdown();
   document.getElementById("contrib-count").textContent=contributions.length;
   const sorted=[...contributions].sort((a,b)=>new Date(a.date)-new Date(b.date));
   document.getElementById("contrib-tbody").innerHTML=sorted.length===0
