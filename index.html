@@ -262,7 +262,7 @@ function render(){
           </div></div>`;
       }).join("");
 
-  const all=[...contributions.map(c=>({...c,kind:"in"})),...expenses.map(e=>({...e,kind:"out"}))].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const all=[...contributions.map(c=>({...c,kind:"in"})),...expenses.map(e=>({...e,kind:"out"}))].sort((a,b)=>new Date(b.date)-new Date(a.date));
   document.getElementById("history-list").innerHTML = all.length===0
     ? '<div style="color:#475569;font-size:13px;text-align:center;padding:20px">No activity yet</div>'
     : all.map(item=>`
